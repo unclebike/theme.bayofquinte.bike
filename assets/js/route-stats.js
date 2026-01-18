@@ -10,9 +10,8 @@
 (function() {
   'use strict';
 
-  // Configuration - Update WORKER_URL when custom domain is ready
-  const WORKER_URL = 'https://rwgps-route-stats.adam-7e5.workers.dev/route-stats';
-  // const WORKER_URL = 'https://api.bayofquinte.bike/route-stats'; // Use after custom domain setup
+  // Configuration
+  const WORKER_URL = 'https://api.bayofquinte.bike/route-stats';
   const STORAGE_PREFIX = 'route-stats-hash:';
 
   /**
