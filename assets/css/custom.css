@@ -797,16 +797,18 @@ ul.route-stats {
    background-position: center;
 }
 .route-stats .list-item .pepper {
-   background-image: url('data:image/webp;base64,...');
+   background-image: url('../image/pepper.webp');
+   filter: brightness(0.4);
 }
 .route-stats .list-item .donut {
-   background-image: url('data:image/webp;base64,...');
+   background-image: url('../image/donot.webp');
+   filter: brightness(0.4);
 }
 .route-stats .list-item .white-donut {
-   background-image: url('data:image/png;base64,...');
+   background-image: url('../image/donot.webp');
 }
 .route-stats .list-item .white-pepper {
-   background-image: url('data:image/png;base64,...');
+   background-image: url('../image/pepper.webp');
 }
 
 /* Route Stats - Responsive */
