@@ -20,7 +20,7 @@
   // Mapbox configuration
   const MAPBOX_TOKEN = 'pk.eyJ1IjoidGlsbGV5IiwiYSI6IlFhX1ZUYm8ifQ.Dr4lrivYwl5ZTnuAdMqzVg';
   const MAPBOX_STYLE = 'mapbox://styles/tilley/cl0sia1dj000u14nmil6oqaox';
-  const ROUTE_LINE_COLOR = '#a9af90'; // Matches theme --color-one
+  const ROUTE_LINE_COLOR = 'hsl(8, 75%, 60%)';
   const ROUTE_LINE_WIDTH = 4;
 
   /**
@@ -206,8 +206,22 @@
       style: MAPBOX_STYLE,
       bounds: bounds,
       fitBoundsOptions: { padding: 30 },
-      interactive: false, // Static thumbnail
+      interactive: true,
       attributionControl: false,
+      scrollZoom: false, // Prevent accidental zoom while scrolling page
+    });
+
+    // Add navigation controls (zoom buttons)
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+    // Enable scroll zoom only when map is focused (double-click or ctrl+scroll)
+    map.on('click', () => {
+      map.scrollZoom.enable();
+    });
+    
+    // Disable scroll zoom when mouse leaves
+    container.addEventListener('mouseleave', () => {
+      map.scrollZoom.disable();
     });
 
     // Add route line when map loads
@@ -232,12 +246,16 @@
       });
     });
 
-    // Click to open RWGPS route
+    // Add RWGPS link button overlay
     if (routeUrl) {
-      container.style.cursor = 'pointer';
-      container.addEventListener('click', () => {
-        window.open(routeUrl, '_blank');
-      });
+      const linkBtn = document.createElement('a');
+      linkBtn.href = routeUrl;
+      linkBtn.target = '_blank';
+      linkBtn.rel = 'noopener noreferrer';
+      linkBtn.className = 'route-map-link';
+      linkBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+      linkBtn.title = 'View on RideWithGPS';
+      container.appendChild(linkBtn);
     }
   }
 

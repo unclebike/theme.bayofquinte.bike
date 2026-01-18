@@ -822,8 +822,57 @@ ul.route-stats {
    border-radius: 4px;
    overflow: hidden;
 }
-.route-stats .route-map:hover {
-   opacity: 0.9;
+.route-stats .route-map {
+   position: relative;
+}
+
+/* RWGPS link button */
+.route-stats .route-map .route-map-link {
+   position: absolute;
+   bottom: 10px;
+   left: 10px;
+   width: 32px;
+   height: 32px;
+   background: var(--color-five);
+   border-radius: 4px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   color: var(--color-white);
+   text-decoration: none;
+   z-index: 10;
+   transition: background 0.2s ease, transform 0.2s ease;
+}
+.route-stats .route-map .route-map-link:hover {
+   background: var(--color-one);
+   transform: scale(1.1);
+}
+.route-stats .route-map .route-map-link svg {
+   width: 18px;
+   height: 18px;
+}
+
+/* Mapbox navigation controls */
+.route-stats .route-map .mapboxgl-ctrl-top-right {
+   top: 10px;
+   right: 10px;
+}
+.route-stats .route-map .mapboxgl-ctrl-group {
+   background: var(--color-five);
+   border-radius: 4px;
+   box-shadow: none;
+}
+.route-stats .route-map .mapboxgl-ctrl-group button {
+   width: 28px;
+   height: 28px;
+   background-color: transparent;
+   border: none;
+}
+.route-stats .route-map .mapboxgl-ctrl-group button:not(:disabled):hover {
+   background-color: var(--color-one);
+}
+.route-stats .route-map .mapboxgl-ctrl-group button .mapboxgl-ctrl-icon {
+   filter: brightness(0) invert(1);
 }
 
 /* Route Stats - Responsive */
