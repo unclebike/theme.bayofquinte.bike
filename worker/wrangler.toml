@@ -1,0 +1,28 @@
+name = "rwgps-route-stats"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# KV Namespace for caching route data
+kv_namespaces = [
+  { binding = "ROUTE_CACHE", id = "YOUR_KV_NAMESPACE_ID" }
+]
+
+# Environment variables
+# IMPORTANT: Secrets should be set via CLI, not in this file:
+#   wrangler secret put RWGPS_API_KEY
+#   wrangler secret put RWGPS_AUTH_TOKEN
+#
+# For local development, create a .dev.vars file with:
+#   RWGPS_API_KEY=your_api_key
+#   RWGPS_AUTH_TOKEN=your_auth_token
+
+# Custom domain configuration
+# After deploying, run: wrangler route add "api.bayofquinte.bike/*"
+# routes = [
+#   { pattern = "api.bayofquinte.bike/*", zone_name = "bayofquinte.bike" }
+# ]
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"

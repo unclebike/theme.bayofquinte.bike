@@ -1,1 +1,11 @@
+# Dependencies
+node_modules/
 
+# Worker secrets (never commit these!)
+worker/.dev.vars
+
+# OS files
+.DS_Store
+
+# Build output
+dist/
