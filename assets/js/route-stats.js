@@ -11,7 +11,10 @@
   'use strict';
 
   // Configuration
-  const WORKER_URL = 'https://api.bayofquinte.bike/route-stats';
+  // Primary: custom domain (once DNS propagates)
+  // Fallback: workers.dev URL
+  const WORKER_URL_PRIMARY = 'https://api.bayofquinte.bike/route-stats';
+  const WORKER_URL_FALLBACK = 'https://rwgps-route-stats.adam-7e5.workers.dev/route-stats';
   const STORAGE_PREFIX = 'route-stats-hash:';
 
   /**
@@ -77,13 +80,23 @@
    * @param {string} level - Challenge level text
    */
   async function loadRouteStats(card, routeId, stars, level) {
-    const url = new URL(WORKER_URL);
-    url.searchParams.set('id', routeId);
-    url.searchParams.set('stars', stars);
-    url.searchParams.set('level', level);
+    // Try primary URL first, fallback if it fails
+    async function tryFetch(baseUrl) {
+      const url = new URL(baseUrl);
+      url.searchParams.set('id', routeId);
+      url.searchParams.set('stars', stars);
+      url.searchParams.set('level', level);
+      return fetch(url.toString());
+    }
 
     try {
-      const response = await fetch(url.toString());
+      let response;
+      try {
+        response = await tryFetch(WORKER_URL_PRIMARY);
+      } catch (e) {
+        // Primary failed (DNS not ready), try fallback
+        response = await tryFetch(WORKER_URL_FALLBACK);
+      }
       
       if (!response.ok) {
         console.error(`Route stats fetch failed: ${response.status}`);
