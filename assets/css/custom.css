@@ -803,12 +803,10 @@ ul.route-stats {
    background-image: url('../image/donot.webp');
 }
 .route-stats .list-item .white-donut {
-   background-image: url('../image/donot.webp');
-   filter: brightness(0.5) saturate(0);
+   background-image: url('../image/white-donot.webp');
 }
 .route-stats .list-item .white-pepper {
-   background-image: url('../image/pepper.webp');
-   filter: brightness(0.5) saturate(0);
+   background-image: url('../image/white-pepper.webp');
 }
 
 /* Route Stats - Responsive */
