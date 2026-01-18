@@ -748,16 +748,27 @@
 
 /* Route Stats
 ______________________________________________________________*/
+/* Route Stats - Main container (map left, stats right) */
 .route-stats {
-   list-style: none;
    display: grid;
-   grid-template-columns: repeat(3, 1fr);
-   padding: 0;
+   grid-template-columns: 40% 1fr;
+   gap: 10px;
+   margin: 0 40px 40px 40px;
+}
+
+/* Route Stats - Stats grid (2 columns) */
+.route-stats-grid {
+   display: grid;
+   grid-template-columns: repeat(2, 1fr);
    gap: 10px;
 }
-ul.route-stats {
-   margin: 0 40px 40px 40px;
-   padding-left: 0;
+
+/* Challenge Level spans full width with larger text */
+.route-stats .challenge-level {
+   grid-column: 1 / -1;
+}
+.route-stats .challenge-level .list-value {
+   font-size: 28px;
 }
 .route-stats .list-item {
    display: flex;
@@ -811,18 +822,16 @@ ul.route-stats {
 
 /* Route Stats - Map */
 .route-stats .route-map-item {
-   grid-column: 1 / -1;
    padding: 0;
    border: none;
    background: transparent;
 }
 .route-stats .route-map {
    width: 100%;
-   height: 200px;
+   height: 100%;
+   min-height: 280px;
    border-radius: 4px;
    overflow: hidden;
-}
-.route-stats .route-map {
    position: relative;
 }
 
@@ -876,20 +885,18 @@ ul.route-stats {
 }
 
 /* Route Stats - Responsive */
-@media (max-width: 991px) {
-   .route-stats {
-      grid-template-columns: repeat(2, 1fr);
-   }
-}
-@media (max-width: 575px) {
+@media (max-width: 767px) {
    .route-stats {
       grid-template-columns: 1fr;
-   }
-   ul.route-stats {
       margin: 0 20px 40px 20px;
    }
    .route-stats .route-map {
-      height: 150px;
+      height: 180px;
+      min-height: auto;
+   }
+   /* Stats grid stays 2 columns on mobile */
+   .route-stats-grid {
+      grid-template-columns: repeat(2, 1fr);
    }
 }
 

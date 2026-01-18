@@ -58,23 +58,25 @@ function formatPercentage(pct) {
  * @param {string} label - Item label
  * @param {string} value - Item value (can be HTML)
  * @param {boolean} isIconContainer - Whether value contains icons
+ * @param {string} extraClass - Additional CSS class for the item
  * @returns {string} HTML for the list item
  */
-function renderStatItem(label, value, isIconContainer = false) {
+function renderStatItem(label, value, isIconContainer = false, extraClass = '') {
+  const classAttr = extraClass ? `list-item ${extraClass}` : 'list-item';
   if (isIconContainer) {
     return `
-    <li class="list-item">
+    <div class="${classAttr}">
       <span class="list-label">${label}</span>
       <div class="icon-container">
         ${value}
       </div>
-    </li>`;
+    </div>`;
   }
   return `
-    <li class="list-item">
+    <div class="${classAttr}">
       <span class="list-label">${label}</span>
       <span class="list-value">${value}</span>
-    </li>`;
+    </div>`;
 }
 
 /**
@@ -94,13 +96,13 @@ function renderMapContainer(routeData) {
   const boundsAttr = JSON.stringify(geoData.bounds).replace(/"/g, '&quot;');
 
   return `
-    <li class="list-item route-map-item">
+    <div class="route-map-item">
       <div class="route-map" 
            data-geojson="${geojsonAttr}"
            data-bounds="${boundsAttr}"
            data-route-url="${geoData.routeUrl}">
       </div>
-    </li>`;
+    </div>`;
 }
 
 /**
@@ -115,11 +117,12 @@ export function renderRouteStatsCard({ routeData, physicalDifficulty, challengeL
   // Calculate technical difficulty from route data
   const techDifficulty = calculateTechnicalDifficulty(routeData);
 
-  // Build the stats items - map first, then stats
+  // Build the map container
   const mapHtml = renderMapContainer(routeData);
   
-  const items = [
-    renderStatItem('Challenge Level', challengeLevel),
+  // Build the stats items - challenge level spans full width, others in 2-col grid
+  const statsItems = [
+    renderStatItem('Challenge Level', challengeLevel, false, 'challenge-level'),
     renderStatItem('Elevation Gain', formatElevation(routeData.elevationGain)),
     renderStatItem('Distance', formatDistance(routeData.distanceKm)),
     renderStatItem('Paved', formatPercentage(routeData.pavedPct)),
@@ -136,8 +139,8 @@ export function renderRouteStatsCard({ routeData, physicalDifficulty, challengeL
     ),
   ];
 
-  // Wrap in the route-stats container with map at top
-  return `<ul class="route-stats">${mapHtml}${items.join('')}</ul>`;
+  // Wrap in the route-stats container: map on left, stats grid on right
+  return `<div class="route-stats">${mapHtml}<div class="route-stats-grid">${statsItems.join('')}</div></div>`;
 }
 
 /**
@@ -147,12 +150,14 @@ export function renderRouteStatsCard({ routeData, physicalDifficulty, challengeL
  */
 export function renderErrorCard(message) {
   return `
-<ul class="route-stats">
-  <li class="list-item">
-    <span class="list-label">Error</span>
-    <span class="list-value">${message}</span>
-  </li>
-</ul>`;
+<div class="route-stats">
+  <div class="route-stats-grid">
+    <div class="list-item challenge-level">
+      <span class="list-label">Error</span>
+      <span class="list-value">${message}</span>
+    </div>
+  </div>
+</div>`;
 }
 
 /**
@@ -161,10 +166,12 @@ export function renderErrorCard(message) {
  */
 export function renderLoadingCard() {
   return `
-<ul class="route-stats">
-  <li class="list-item">
-    <span class="list-label">Loading</span>
-    <span class="list-value">Fetching route data...</span>
-  </li>
-</ul>`;
+<div class="route-stats">
+  <div class="route-stats-grid">
+    <div class="list-item challenge-level">
+      <span class="list-label">Loading</span>
+      <span class="list-value">Fetching route data...</span>
+    </div>
+  </div>
+</div>`;
 }
