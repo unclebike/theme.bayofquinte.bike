@@ -126,6 +126,7 @@ async function handleRequest(request, env, ctx) {
   const routeId = url.searchParams.get('id');
   const stars = parseInt(url.searchParams.get('stars'), 10);
   const level = url.searchParams.get('level');
+  const purge = url.searchParams.get('purge') === 'true';
 
   // Validate required parameters
   if (!routeId) {
@@ -139,8 +140,14 @@ async function handleRequest(request, env, ctx) {
   }
 
   try {
+    // Purge cache if requested
+    if (purge) {
+      await env.ROUTE_CACHE.delete(`route:${routeId}`);
+      console.log(`Route ${routeId}: Cache purged`);
+    }
+
     // Check cache first
-    const cached = await getCachedRoute(env.ROUTE_CACHE, routeId);
+    const cached = purge ? null : await getCachedRoute(env.ROUTE_CACHE, routeId);
     
     if (cached) {
       // Check if we have pre-rendered HTML for this star rating
