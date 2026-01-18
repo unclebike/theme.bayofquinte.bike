@@ -45,9 +45,15 @@ export async function fetchRouteData(routeId, env) {
  * @returns {object} Normalized route data
  */
 function normalizeRouteData(route) {
+  // Process track points for map display
+  const trackPoints = route.track_points || [];
+  const simplified = simplifyTrackPoints(trackPoints, 150); // Max 150 points for performance
+  const bounds = calculateBounds(simplified);
+
   return {
     id: route.id,
     name: route.name,
+    url: `https://ridewithgps.com/routes/${route.id}`,
     // Distance in meters, convert to km
     distance: route.distance,
     distanceKm: route.distance / 1000,
@@ -66,7 +72,58 @@ function normalizeRouteData(route) {
     // Timestamps for cache invalidation
     createdAt: route.created_at,
     updatedAt: route.updated_at,
+    // Track data for map
+    trackPoints: simplified,
+    bounds: bounds,
   };
+}
+
+/**
+ * Simplify track points by sampling evenly
+ * @param {Array} points - Array of track points
+ * @param {number} maxPoints - Maximum number of points to return
+ * @returns {Array} Simplified array of [lng, lat] coordinates
+ */
+function simplifyTrackPoints(points, maxPoints) {
+  if (!points || points.length === 0) return [];
+  if (points.length <= maxPoints) {
+    return points.map(p => [p.x, p.y]);
+  }
+
+  // Sample evenly across the route
+  const step = (points.length - 1) / (maxPoints - 1);
+  const result = [];
+  
+  for (let i = 0; i < maxPoints; i++) {
+    const idx = Math.round(i * step);
+    const p = points[idx];
+    result.push([p.x, p.y]);
+  }
+  
+  return result;
+}
+
+/**
+ * Calculate bounding box from track points
+ * @param {Array} coordinates - Array of [lng, lat] coordinates
+ * @returns {Array} [[minLng, minLat], [maxLng, maxLat]]
+ */
+function calculateBounds(coordinates) {
+  if (!coordinates || coordinates.length === 0) {
+    return null;
+  }
+
+  let minLng = Infinity, minLat = Infinity;
+  let maxLng = -Infinity, maxLat = -Infinity;
+
+  for (const [lng, lat] of coordinates) {
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+
+  return [[minLng, minLat], [maxLng, maxLat]];
 }
 
 /**

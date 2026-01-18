@@ -16,6 +16,13 @@
   const WORKER_URL_PRIMARY = 'https://api.bayofquinte.bike/route-stats';
   const WORKER_URL_FALLBACK = 'https://rwgps-route-stats.adam-7e5.workers.dev/route-stats';
   const STORAGE_PREFIX = 'route-stats-hash:';
+  
+  // Mapbox configuration
+  // IMPORTANT: Replace with your public token (starts with pk.)
+  const MAPBOX_TOKEN = 'YOUR_MAPBOX_PUBLIC_TOKEN';
+  const MAPBOX_STYLE = 'mapbox://styles/mapbox/outdoors-v12';
+  const ROUTE_LINE_COLOR = '#a9af90'; // Matches theme --color-one
+  const ROUTE_LINE_WIDTH = 4;
 
   /**
    * Extract route ID from RWGPS URL
@@ -159,6 +166,91 @@
   }
 
   /**
+   * Initialize a Mapbox map in a route-map container
+   * @param {Element} container - The .route-map element
+   */
+  function initializeMap(container) {
+    if (container.dataset.mapInitialized) return;
+    container.dataset.mapInitialized = 'true';
+
+    // Check if Mapbox is available
+    if (typeof mapboxgl === 'undefined') {
+      console.error('Mapbox GL JS not loaded');
+      return;
+    }
+
+    // Get data from attributes
+    const geojsonStr = container.getAttribute('data-geojson');
+    const boundsStr = container.getAttribute('data-bounds');
+    const routeUrl = container.getAttribute('data-route-url');
+
+    if (!geojsonStr || !boundsStr) {
+      console.error('Missing map data attributes');
+      return;
+    }
+
+    let geojson, bounds;
+    try {
+      geojson = JSON.parse(geojsonStr.replace(/&quot;/g, '"'));
+      bounds = JSON.parse(boundsStr.replace(/&quot;/g, '"'));
+    } catch (e) {
+      console.error('Failed to parse map data:', e);
+      return;
+    }
+
+    // Set Mapbox token
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    // Create map
+    const map = new mapboxgl.Map({
+      container: container,
+      style: MAPBOX_STYLE,
+      bounds: bounds,
+      fitBoundsOptions: { padding: 30 },
+      interactive: false, // Static thumbnail
+      attributionControl: false,
+    });
+
+    // Add route line when map loads
+    map.on('load', () => {
+      map.addSource('route', {
+        type: 'geojson',
+        data: geojson,
+      });
+
+      map.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+        },
+        paint: {
+          'line-color': ROUTE_LINE_COLOR,
+          'line-width': ROUTE_LINE_WIDTH,
+        },
+      });
+    });
+
+    // Click to open RWGPS route
+    if (routeUrl) {
+      container.style.cursor = 'pointer';
+      container.addEventListener('click', () => {
+        window.open(routeUrl, '_blank');
+      });
+    }
+  }
+
+  /**
+   * Initialize all maps on the page
+   */
+  function initializeMaps() {
+    const mapContainers = document.querySelectorAll('.route-map');
+    mapContainers.forEach(initializeMap);
+  }
+
+  /**
    * Initialize when DOM is ready
    */
   function init() {
@@ -171,13 +263,31 @@
     // Also observe for dynamically added content (e.g., infinite scroll)
     const observer = new MutationObserver(mutations => {
       let shouldProcess = false;
+      let shouldInitMaps = false;
+      
       mutations.forEach(mutation => {
         if (mutation.addedNodes.length) {
           shouldProcess = true;
+          // Check if any route-stats were added
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === 1) {
+              if (node.classList && node.classList.contains('route-stats')) {
+                shouldInitMaps = true;
+              }
+              if (node.querySelector && node.querySelector('.route-map')) {
+                shouldInitMaps = true;
+              }
+            }
+          });
         }
       });
+      
       if (shouldProcess) {
         processProductCards();
+      }
+      if (shouldInitMaps) {
+        // Small delay to ensure DOM is ready
+        setTimeout(initializeMaps, 100);
       }
     });
 

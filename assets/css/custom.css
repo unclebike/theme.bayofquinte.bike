@@ -809,6 +809,23 @@ ul.route-stats {
    background-image: url('../image/w-pepper.webp');
 }
 
+/* Route Stats - Map */
+.route-stats .route-map-item {
+   grid-column: 1 / -1;
+   padding: 0;
+   border: none;
+   background: transparent;
+}
+.route-stats .route-map {
+   width: 100%;
+   height: 200px;
+   border-radius: 4px;
+   overflow: hidden;
+}
+.route-stats .route-map:hover {
+   opacity: 0.9;
+}
+
 /* Route Stats - Responsive */
 @media (max-width: 991px) {
    .route-stats {
@@ -821,6 +838,9 @@ ul.route-stats {
    }
    ul.route-stats {
       margin: 0 20px 40px 20px;
+   }
+   .route-stats .route-map {
+      height: 150px;
    }
 }
 

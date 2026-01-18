@@ -4,6 +4,7 @@
  */
 
 import { calculateTechnicalDifficulty } from './calculator.js';
+import { generateRouteGeoJSON } from './geojson.js';
 
 /**
  * Generate icon HTML for difficulty ratings
@@ -77,6 +78,32 @@ function renderStatItem(label, value, isIconContainer = false) {
 }
 
 /**
+ * Render the route map container
+ * @param {object} routeData - Normalized route data with trackPoints and bounds
+ * @returns {string} HTML for the map container
+ */
+function renderMapContainer(routeData) {
+  if (!routeData.trackPoints || routeData.trackPoints.length === 0) {
+    return '';
+  }
+
+  const geoData = generateRouteGeoJSON(routeData);
+  
+  // Escape JSON for HTML attribute
+  const geojsonAttr = JSON.stringify(geoData.geojson).replace(/"/g, '&quot;');
+  const boundsAttr = JSON.stringify(geoData.bounds).replace(/"/g, '&quot;');
+
+  return `
+    <li class="list-item route-map-item">
+      <div class="route-map" 
+           data-geojson="${geojsonAttr}"
+           data-bounds="${boundsAttr}"
+           data-route-url="${geoData.routeUrl}">
+      </div>
+    </li>`;
+}
+
+/**
  * Render the complete route stats card HTML
  * @param {object} options - Rendering options
  * @param {object} options.routeData - Normalized RWGPS route data
@@ -88,7 +115,9 @@ export function renderRouteStatsCard({ routeData, physicalDifficulty, challengeL
   // Calculate technical difficulty from route data
   const techDifficulty = calculateTechnicalDifficulty(routeData);
 
-  // Build the stats items
+  // Build the stats items - map first, then stats
+  const mapHtml = renderMapContainer(routeData);
+  
   const items = [
     renderStatItem('Challenge Level', challengeLevel),
     renderStatItem('Elevation Gain', formatElevation(routeData.elevationGain)),
@@ -107,8 +136,8 @@ export function renderRouteStatsCard({ routeData, physicalDifficulty, challengeL
     ),
   ];
 
-  // Wrap in the route-stats container
-  return `<ul class="route-stats">${items.join('')}</ul>`;
+  // Wrap in the route-stats container with map at top
+  return `<ul class="route-stats">${mapHtml}${items.join('')}</ul>`;
 }
 
 /**

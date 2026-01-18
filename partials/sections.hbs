@@ -1,69 +1,29 @@
-{{!-- Special Sections for Custom Tags --}}
-{{#if @custom.tag_for_special_section_1}}
-    <div class="special-section">
-        <div class="global-heading">
-            {{#get "tags" limit="1" filter="slug:[{{@custom.tag_for_special_section_1}}]"}}
-                {{#foreach tags}}
-                    <h3>{{name}}</h3>  {{!-- ✅ Uses Tag Name Instead of Custom Title --}}
-                    <a href="{{url}}">{{t "See all {primary-tag}" primary-tag=name}}{{>icons/site/arrow_right}}</a>
-                {{/foreach}}
-            {{/get}}
-        </div>
-        {{#get "posts" limit="5" filter="tag:[{{@custom.tag_for_special_section_1}}]" include="authors,tags"}}
-            {{>sections_content}}
-        {{/get}}
-    </div>
+{{#match @custom.tag_for_special_section}}
+<div class="special-section">
+	<div class="global-heading">
+		{{#get "tags" limit="1" filter="slug:[{{@custom.tag_for_special_section}}]"}}
+		{{#foreach tags}}
+		<h3>{{name}}</h3>
+		<a href="{{url}}">{{t "See all {primary-tag}" primary-tag=name}}{{>icons/site/arrow_right}}</a>
+		{{/foreach}}
+		{{/get}}
+	</div>
+	{{#get "posts" limit="5" filter="tag:[{{@custom.tag_for_special_section}}]" include="authors,tags"}}
+	{{>sections_content}}
+	{{/get}}
+</div>
+{{else}}
+{{#foreach posts limit="1"}}
+{{#if primary_tag}}
+<div class="special-section">
+	<div class="global-heading">
+		<h3>{{primary_tag.name}}</h3>
+		<a href="{{primary_tag.url}}">{{t "See all {primary-tag}" primary-tag=primary_tag.name}}{{>icons/site/arrow_right}}</a>
+	</div>
+	{{#get "posts" limit="5" filter="tag:{{primary_tag.slug}}+id:-{{id}}" include="authors,tags"}}
+	{{>sections_content}}
+	{{/get}}
+</div>
 {{/if}}
-
-{{#if @custom.tag_for_special_section_2}}
-    <div class="special-section">
-        <div class="global-heading">
-            {{#get "tags" limit="1" filter="slug:[{{@custom.tag_for_special_section_2}}]"}}
-                {{#foreach tags}}
-                    <h3>{{name}}</h3>  {{!-- ✅ Uses Tag Name Instead of Custom Title --}}
-                    <a href="{{url}}">{{t "See all {primary-tag}" primary-tag=name}}{{>icons/site/arrow_right}}</a>
-                {{/foreach}}
-            {{/get}}
-        </div>
-        {{#get "posts" limit="5" filter="tag:[{{@custom.tag_for_special_section_2}}]" include="authors,tags"}}
-            {{>sections_content}}
-        {{/get}}
-    </div>
-{{/if}}
-
-{{#if @custom.tag_for_special_section_3}}
-    <div class="special-section">
-        <div class="global-heading">
-            {{#get "tags" limit="1" filter="slug:[{{@custom.tag_for_special_section_3}}]"}}
-                {{#foreach tags}}
-                    <h3>{{name}}</h3>  {{!-- ✅ Uses Tag Name Instead of Custom Title --}}
-                    <a href="{{url}}">{{t "See all {primary-tag}" primary-tag=name}}{{>icons/site/arrow_right}}</a>
-                {{/foreach}}
-            {{/get}}
-        </div>
-        {{#get "posts" limit="5" filter="tag:[{{@custom.tag_for_special_section_3}}]" include="authors,tags"}}
-            {{>sections_content}}
-        {{/get}}
-    </div>
-{{/if}}
-
-{{!-- Fallback Logic for Posts Without Special Tags --}}
-{{#unless @custom.tag_for_special_section_1}}
-    {{#unless @custom.tag_for_special_section_2}}
-        {{#unless @custom.tag_for_special_section_3}}
-            {{#foreach posts limit="1"}}
-                {{#if primary_tag}}
-                    <div class="special-section">
-                        <div class="global-heading">
-                            <h3>{{primary_tag.name}}</h3>  {{!-- ✅ Uses Tag Name for Fallback --}}
-                            <a href="{{primary_tag.url}}">{{t "See all {primary-tag}" primary-tag=primary_tag.name}}{{>icons/site/arrow_right}}</a>
-                        </div>
-                        {{#get "posts" limit="5" filter="tag:{{primary_tag.slug}}+id:-{{id}}" include="authors,tags"}}
-                            {{>sections_content}}
-                        {{/get}}
-                    </div>
-                {{/if}}
-            {{/foreach}}
-        {{/unless}}
-    {{/unless}}
-{{/unless}}
+{{/foreach}}
+{{/match}}
