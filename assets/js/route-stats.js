@@ -18,8 +18,7 @@
   const STORAGE_PREFIX = 'route-stats-hash:';
   
   // Mapbox configuration
-  // IMPORTANT: Replace with your public token (starts with pk.)
-  const MAPBOX_TOKEN = 'YOUR_MAPBOX_PUBLIC_TOKEN';
+  const MAPBOX_TOKEN = 'pk.eyJ1IjoidGlsbGV5IiwiYSI6IlFhX1ZUYm8ifQ.Dr4lrivYwl5ZTnuAdMqzVg';
   const MAPBOX_STYLE = 'mapbox://styles/mapbox/outdoors-v12';
   const ROUTE_LINE_COLOR = '#a9af90'; // Matches theme --color-one
   const ROUTE_LINE_WIDTH = 4;
