@@ -750,39 +750,34 @@
 ______________________________________________________________*/
 .route-stats {
    list-style: none;
-   display: flex;
-   flex-direction: column;
+   display: grid;
+   grid-template-columns: repeat(3, 1fr);
    padding: 0;
-   gap: 5px;
-   --clr-light: #a9af90;
-   --clr-dark: #85937a;
-   --clr-white: #ffffff;
+   gap: 10px;
 }
 ul.route-stats {
-   margin: 0px 40px 40px 40px;
-   padding-left: 0px;
+   margin: 0 40px 40px 40px;
+   padding-left: 0;
 }
 .route-stats .list-item {
    display: flex;
    justify-content: space-between;
    flex-wrap: wrap;
    gap: 10px;
-   border-bottom: 2px solid #85937a;
+   border: 2px solid var(--color-five);
    padding: 10px 20px;
-   color: var(--clr-white);
+   color: var(--color-white);
    font-size: 18px;
    border-radius: 4px;
-}
-.route-stats .list-item:nth-child(odd) {
-   background-color: var(--clr-light);
-}
-.route-stats .list-item:nth-child(even) {
-   background-color: var(--clr-dark);
+   background-color: var(--color-one);
 }
 .route-stats .list-item .icon-container {
    display: flex;
    align-items: center;
    gap: 10px;
+   background-color: var(--color-five);
+   padding: 5px 10px;
+   border-radius: 4px;
 }
 .route-stats .list-item .icon-container span {
    width: 25px;
@@ -802,6 +797,21 @@ ul.route-stats {
 }
 .route-stats .list-item .white-pepper {
    background-image: url('data:image/png;base64,...');
+}
+
+/* Route Stats - Responsive */
+@media (max-width: 991px) {
+   .route-stats {
+      grid-template-columns: repeat(2, 1fr);
+   }
+}
+@media (max-width: 575px) {
+   .route-stats {
+      grid-template-columns: 1fr;
+   }
+   ul.route-stats {
+      margin: 0 20px 40px 20px;
+   }
 }
 
 /* Grid Layout */
