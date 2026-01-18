@@ -29,8 +29,12 @@
 		{{>members/notifications}}
 		{{>search}}
 		<script src="{{asset "js/global.js"}}"></script>
+		{{#if pagination.pages}}
+		<script src="{{asset "js/index.js"}}"></script>
+		{{/if}}
 		{{#is "post, page"}}
 		<script src="{{asset "js/post.js"}}"></script>
+		<script src="{{asset "js/route-stats.js"}}"></script>
 		{{/is}}
 		{{{block "notifications_js"}}}
 		{{{block "search_js"}}}
