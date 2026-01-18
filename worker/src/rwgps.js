@@ -15,13 +15,13 @@ export async function fetchRouteData(routeId, env) {
   const apiKey = env.RWGPS_API_KEY;
   const authToken = env.RWGPS_AUTH_TOKEN;
 
-  const url = new URL(`${RWGPS_API_BASE}/routes/${routeId}.json`);
-  url.searchParams.set('apikey', apiKey);
-  url.searchParams.set('auth_token', authToken);
+  const url = `${RWGPS_API_BASE}/routes/${routeId}.json`;
 
-  const response = await fetch(url.toString(), {
+  const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
+      'x-rwgps-api-key': apiKey,
+      'x-rwgps-auth-token': authToken,
     },
   });
 
