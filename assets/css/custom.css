@@ -751,9 +751,12 @@ ______________________________________________________________*/
 /* Route Stats - Main container (map left, stats right) */
 .route-stats {
    display: grid;
-   grid-template-columns: 40% 1fr;
+   grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
    gap: 10px;
    margin: 0 0 40px 0;
+   width: 100%;
+   max-width: 100%;
+   box-sizing: border-box;
 }
 
 /* Route Stats - Stats grid (2 columns) */
@@ -819,6 +822,12 @@ ______________________________________________________________*/
 }
 .route-stats .list-item .white-pepper {
    background-image: url('../image/w-pepper.webp');
+}
+
+/* Stack difficulty stats full width on all screen sizes */
+.route-stats .list-item:has(.icon-container) {
+   grid-column: 1 / -1;
+   padding: 8px 12px;
 }
 
 /* Route Stats - Map */
@@ -899,10 +908,7 @@ ______________________________________________________________*/
    .route-stats-grid {
       grid-template-columns: repeat(2, 1fr);
    }
-   /* Stack difficulty stats full width with bigger icons */
-   .route-stats .list-item:has(.icon-container) {
-      grid-column: 1 / -1;
-   }
+   /* Bigger icons on mobile */
    .route-stats .list-item .icon-container span {
       width: 32px;
       height: 32px;
