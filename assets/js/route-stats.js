@@ -19,7 +19,7 @@
   
   // Mapbox configuration
   const MAPBOX_TOKEN = 'pk.eyJ1IjoidGlsbGV5IiwiYSI6IlFhX1ZUYm8ifQ.Dr4lrivYwl5ZTnuAdMqzVg';
-  const MAPBOX_STYLE = 'mapbox://styles/tilley/cl0sia1dj000u14nmil6oqaox';
+  const MAPBOX_STYLE = 'mapbox://styles/tilley/cl0sia1dj000u14nmil6oqaox?v=2';
   const ROUTE_LINE_COLOR = 'hsl(8, 75%, 60%)';
   const ROUTE_LINE_WIDTH = 4;
 
