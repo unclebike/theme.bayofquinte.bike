@@ -751,7 +751,7 @@ ______________________________________________________________*/
 /* Route Stats - Main container (map left, stats right) */
 .route-stats {
    display: grid;
-   grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
+   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
    gap: 10px;
    margin: 0 0 40px 0;
    width: 100%;
