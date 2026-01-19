@@ -753,7 +753,7 @@ ______________________________________________________________*/
    display: grid;
    grid-template-columns: 40% 1fr;
    gap: 10px;
-   margin: 0 40px 40px 40px;
+   margin: 0 0 40px 0;
 }
 
 /* Route Stats - Stats grid (2 columns) */
@@ -888,7 +888,7 @@ ______________________________________________________________*/
 @media (max-width: 767px) {
    .route-stats {
       grid-template-columns: 1fr;
-      margin: 0 clamp(10px, 3vw, 20px) 40px;
+      margin: 0 0 40px 0;
    }
    .route-stats .route-map {
       height: 180px;
