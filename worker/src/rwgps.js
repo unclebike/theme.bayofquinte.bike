@@ -60,9 +60,9 @@ function normalizeRouteData(route) {
     // Elevation in meters
     elevationGain: route.elevation_gain,
     elevationLoss: route.elevation_loss,
-    // Surface data
-    unpavedPct: route.unpaved_pct || 0,
-    pavedPct: 100 - (route.unpaved_pct || 0),
+    // Surface data (unpaved_pct can be -1 for unknown)
+    unpavedPct: route.unpaved_pct !== undefined ? route.unpaved_pct : 0,
+    pavedPct: route.unpaved_pct >= 0 ? 100 - route.unpaved_pct : 0,
     surface: route.surface || 'unknown',
     // Terrain and difficulty from RWGPS
     terrain: route.terrain || 'unknown',

@@ -1,132 +1,163 @@
 /**
  * Technical Difficulty Calculator
  * 
- * Calculates technical difficulty (1-5 peppers) based on:
- * - Terrain base score (from RWGPS surface field)
- * - Elevation multiplier (from elevation gain per km)
+ * Calculates technical difficulty (1-5 peppers) based on RWGPS fields:
+ * - difficulty: casual, easy, moderate, hard, multi_day
+ * - terrain: flat, rolling, climbing
+ * - surface: paved, mostly_paved, mixed_surfaces, mostly_unpaved, unknown
+ * - unpaved_pct: percentage of route that's unpaved
  * 
- * Key principle: Elevation amplifies technical difficulty, it doesn't create it.
- * Steep pavement stays non-technical. Steep loose gravel becomes very technical.
+ * Key principle: Surface type determines caps, RWGPS difficulty/terrain 
+ * determines base score. Paved roads are never technical regardless of steepness.
  */
 
 /**
- * Terrain base scores mapped from RWGPS surface field
- * These represent the inherent technical challenge of each surface type
+ * Base scores from RWGPS difficulty field
  */
-const TERRAIN_BASE_SCORES = {
-  'paved': 1.0,           // Smooth pavement / chipseal
-  'mostly_paved': 1.5,    // Mostly paved with some gravel
-  'mixed_surfaces': 2.5,  // Mix of paved and unpaved
-  'mostly_unpaved': 3.5,  // Mostly gravel/dirt
-  'unknown': 2.0,         // Default to moderate
+const DIFFICULTY_BASE_SCORES = {
+  'casual': 1,
+  'easy': 2,
+  'moderate': 3,
+  'hard': 4,
+  'multi_day': null, // Use terrain instead
 };
 
 /**
- * Elevation stress bands and their multipliers
- * These amplify the base terrain score
+ * Terrain modifiers - climbing adds difficulty
  */
-const ELEVATION_BANDS = [
-  { maxRatio: 3, stress: 'low', multiplier: 1.0 },
-  { maxRatio: 6, stress: 'moderate', multiplier: 1.1 },
-  { maxRatio: 9, stress: 'high', multiplier: 1.25 },
-  { maxRatio: Infinity, stress: 'severe', multiplier: 1.4 },
-];
+const TERRAIN_MODIFIERS = {
+  'flat': 0,
+  'rolling': 0,
+  'climbing': 1,
+  'unknown': 0,
+};
 
 /**
- * Get terrain base score from RWGPS surface type
- * @param {string} surface - RWGPS surface field value
- * @returns {number} Base score 1-5
+ * Get base score from RWGPS difficulty, falling back to terrain for multi_day
+ * @param {string} difficulty - RWGPS difficulty field
+ * @param {string} terrain - RWGPS terrain field
+ * @returns {number} Base score 1-4
  */
-function getTerrainBaseScore(surface) {
-  return TERRAIN_BASE_SCORES[surface] || TERRAIN_BASE_SCORES['unknown'];
-}
-
-/**
- * Calculate elevation gain ratio (meters per km)
- * @param {number} elevationGain - Total elevation gain in meters
- * @param {number} distanceKm - Total distance in kilometers
- * @returns {number} Elevation gain per km
- */
-function getElevationRatio(elevationGain, distanceKm) {
-  if (distanceKm <= 0) return 0;
-  return elevationGain / distanceKm;
-}
-
-/**
- * Get elevation multiplier based on gain ratio
- * @param {number} gainRatio - Elevation gain per km (m/km)
- * @returns {object} { stress, multiplier }
- */
-function getElevationMultiplier(gainRatio) {
-  for (const band of ELEVATION_BANDS) {
-    if (gainRatio < band.maxRatio) {
-      return { stress: band.stress, multiplier: band.multiplier };
-    }
+function getBaseScore(difficulty, terrain) {
+  const base = DIFFICULTY_BASE_SCORES[difficulty];
+  
+  if (base !== null && base !== undefined) {
+    return base;
   }
-  return { stress: 'severe', multiplier: 1.4 };
+  
+  // For multi_day or unknown difficulty, derive from terrain
+  if (terrain === 'climbing') return 3;
+  if (terrain === 'rolling') return 2;
+  return 2; // Default for flat or unknown
 }
 
 /**
- * Apply sanity overrides to prevent nonsense outputs
- * @param {number} rawScore - Calculated raw technical score
- * @param {string} surface - RWGPS surface type
- * @param {number} terrainBase - Terrain base score
- * @param {number} gainRatio - Elevation gain per km
- * @returns {number} Adjusted score with overrides applied
+ * Get terrain modifier
+ * @param {string} terrain - RWGPS terrain field
+ * @returns {number} Modifier to add to base score
  */
-function applySanityOverrides(rawScore, surface, terrainBase, gainRatio) {
+function getTerrainModifier(terrain) {
+  return TERRAIN_MODIFIERS[terrain] || 0;
+}
+
+/**
+ * Calculate unpaved distance in km
+ * @param {number} distanceKm - Total distance in km
+ * @param {number} unpavedPct - Percentage unpaved (can be -1 for unknown)
+ * @returns {number} Unpaved distance in km
+ */
+function getUnpavedKm(distanceKm, unpavedPct) {
+  if (unpavedPct < 0) return 0; // Unknown surface
+  return (unpavedPct / 100) * distanceKm;
+}
+
+/**
+ * Apply surface-based caps to the raw score
+ * @param {number} rawScore - Calculated raw score
+ * @param {string} surface - RWGPS surface field
+ * @param {string} terrain - RWGPS terrain field
+ * @param {string} difficulty - RWGPS difficulty field
+ * @param {number} unpavedKm - Unpaved distance in km
+ * @returns {number} Score with caps applied
+ */
+function applySurfaceCaps(rawScore, surface, terrain, difficulty, unpavedKm) {
   let score = rawScore;
-
-  // Override 1: If terrain base >= 4, final tech cannot be < 3
-  if (terrainBase >= 4 && score < 3) {
-    score = 3;
+  
+  // Paved roads: always cap at 1 pepper
+  if (surface === 'paved') {
+    return Math.min(score, 1);
   }
-
-  // Override 2: If mostly_unpaved + gain >= 6 m/km, final tech >= 4
-  if (surface === 'mostly_unpaved' && gainRatio >= 6 && score < 4) {
-    score = 4;
+  
+  // Mostly paved: cap at 1 if < 1km unpaved, otherwise cap at 2
+  if (surface === 'mostly_paved') {
+    if (unpavedKm < 1) {
+      return Math.min(score, 1);
+    }
+    return Math.min(score, 2);
   }
-
-  // Override 3: If paved or mostly_paved (>=80% paved), final tech <= 2
-  if ((surface === 'paved' || surface === 'mostly_paved') && score > 2) {
-    score = 2;
+  
+  // Mixed surfaces: cap at 2 if < 1km unpaved, cap at 3 unless climbing/hard
+  if (surface === 'mixed_surfaces') {
+    if (unpavedKm < 1) {
+      return Math.min(score, 2);
+    }
+    // Uncapped if climbing or hard
+    if (terrain === 'climbing' || difficulty === 'hard') {
+      return score;
+    }
+    return Math.min(score, 3);
   }
-
+  
+  // Mostly unpaved: cap at 3 unless climbing or hard
+  if (surface === 'mostly_unpaved') {
+    if (terrain === 'climbing' || difficulty === 'hard') {
+      return score; // Uncapped
+    }
+    return Math.min(score, 3);
+  }
+  
+  // Unknown surface: minimum 3 peppers
+  if (surface === 'unknown') {
+    return Math.max(score, 3);
+  }
+  
   return score;
 }
 
 /**
- * Calculate technical difficulty score (1-5)
+ * Calculate technical difficulty score (1-5 peppers)
  * @param {object} routeData - Normalized route data from RWGPS
- * @returns {object} { score, terrainBase, elevationRatio, elevationStress, rawScore }
+ * @returns {object} { score, baseScore, terrainModifier, surface, terrain, difficulty }
  */
 export function calculateTechnicalDifficulty(routeData) {
-  const { surface, elevationGain, distanceKm } = routeData;
-
-  // Step 1: Get terrain base score
-  const terrainBase = getTerrainBaseScore(surface);
-
-  // Step 2: Calculate elevation ratio
-  const elevationRatio = getElevationRatio(elevationGain, distanceKm);
-
-  // Step 3: Get elevation multiplier
-  const { stress: elevationStress, multiplier } = getElevationMultiplier(elevationRatio);
-
-  // Step 4: Calculate raw score
-  const rawScore = terrainBase * multiplier;
-
-  // Step 5: Apply sanity overrides
-  const adjustedScore = applySanityOverrides(rawScore, surface, terrainBase, elevationRatio);
-
-  // Step 6: Clamp and round to 1-5
-  const finalScore = Math.round(Math.min(5, Math.max(1, adjustedScore)));
-
+  const { surface, terrain, difficulty, distanceKm, unpavedPct } = routeData;
+  
+  // Step 1: Get base score from RWGPS difficulty
+  const baseScore = getBaseScore(difficulty, terrain);
+  
+  // Step 2: Get terrain modifier
+  const terrainModifier = getTerrainModifier(terrain);
+  
+  // Step 3: Calculate raw score
+  const rawScore = baseScore + terrainModifier;
+  
+  // Step 4: Calculate unpaved distance
+  const unpavedKm = getUnpavedKm(distanceKm, unpavedPct);
+  
+  // Step 5: Apply surface caps
+  const cappedScore = applySurfaceCaps(rawScore, surface, terrain, difficulty, unpavedKm);
+  
+  // Step 6: Clamp to 1-5
+  const finalScore = Math.round(Math.min(5, Math.max(1, cappedScore)));
+  
   return {
     score: finalScore,
-    terrainBase,
-    elevationRatio: Math.round(elevationRatio * 10) / 10, // Round to 1 decimal
-    elevationStress,
-    rawScore: Math.round(rawScore * 100) / 100,
+    baseScore,
+    terrainModifier,
+    surface: surface || 'unknown',
+    terrain: terrain || 'unknown',
+    difficulty: difficulty || 'unknown',
+    unpavedKm: Math.round(unpavedKm * 10) / 10,
   };
 }
 
