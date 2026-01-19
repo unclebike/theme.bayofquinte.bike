@@ -7,7 +7,7 @@
  * Implements stale-while-revalidate caching with hash-based change detection.
  */
 
-import { fetchRouteData } from './rwgps.js';
+import { fetchRouteData, fetchClubRoutes } from './rwgps.js';
 import { renderRouteStatsCard, renderErrorCard } from './renderer.js';
 import {
   getCachedRoute,
@@ -17,6 +17,8 @@ import {
   getCachedHtml,
   updateCachedHtml,
   generateDataHash,
+  getCachedClubRoutes,
+  setCachedClubRoutes,
 } from './cache.js';
 
 /**
@@ -103,15 +105,55 @@ async function revalidateCache(routeId, stars, level, env, cached) {
 }
 
 /**
- * Main request handler
+ * Handle /club-routes endpoint - returns list of all club routes
  */
-async function handleRequest(request, env, ctx) {
-  const url = new URL(request.url);
-  
-  // Only handle /route-stats endpoint
-  if (url.pathname !== '/route-stats') {
-    return errorResponse('Not found', 404);
+async function handleClubRoutes(request, env, ctx) {
+  // Handle CORS preflight
+  if (request.method === 'OPTIONS') {
+    return handleOptions();
   }
+
+  // Only allow GET requests
+  if (request.method !== 'GET') {
+    return errorResponse('Method not allowed', 405);
+  }
+
+  const clubId = env.RWGPS_CLUB_ID;
+  if (!clubId) {
+    return errorResponse('Club ID not configured', 500);
+  }
+
+  try {
+    // Check cache first
+    let routes = await getCachedClubRoutes(env.ROUTE_CACHE, clubId);
+
+    if (!routes) {
+      // Cache miss: fetch from RWGPS
+      routes = await fetchClubRoutes(env);
+      
+      // Store in cache (don't wait)
+      ctx.waitUntil(setCachedClubRoutes(env.ROUTE_CACHE, clubId, routes));
+    }
+
+    return new Response(JSON.stringify({ routes }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=3600', // 1 hour browser cache
+        ...CORS_HEADERS,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching club routes:', error);
+    return errorResponse(error.message || 'Failed to fetch club routes', 500);
+  }
+}
+
+/**
+ * Handle /route-stats endpoint - returns rendered route stats HTML
+ */
+async function handleRouteStats(request, env, ctx) {
+  const url = new URL(request.url);
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
@@ -224,6 +266,29 @@ async function handleRequest(request, env, ctx) {
       },
     });
   }
+}
+
+/**
+ * Main request handler - routes to appropriate endpoint handler
+ */
+async function handleRequest(request, env, ctx) {
+  const url = new URL(request.url);
+
+  // Handle CORS preflight for any endpoint
+  if (request.method === 'OPTIONS') {
+    return handleOptions();
+  }
+
+  // Route to appropriate handler
+  if (url.pathname === '/club-routes') {
+    return handleClubRoutes(request, env, ctx);
+  }
+  
+  if (url.pathname === '/route-stats') {
+    return handleRouteStats(request, env, ctx);
+  }
+
+  return errorResponse('Not found', 404);
 }
 
 /**

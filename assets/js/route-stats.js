@@ -16,8 +16,8 @@
   'use strict';
 
   // Configuration
-  const WORKER_URL_PRIMARY = 'https://api.bayofquinte.bike/route-stats';
-  const WORKER_URL_FALLBACK = 'https://rwgps-route-stats.adam-7e5.workers.dev/route-stats';
+  const WORKER_BASE_PRIMARY = 'https://api.bayofquinte.bike';
+  const WORKER_BASE_FALLBACK = 'https://rwgps-route-stats.adam-7e5.workers.dev';
   const STORAGE_PREFIX = 'route-stats-hash:';
   
   // Mapbox configuration
@@ -158,35 +158,46 @@
   }
 
   /**
-   * Fetch route stats from worker and replace button card
-   * @param {Element} card - Button card element to replace
+   * Fetch from worker with fallback
+   * @param {string} endpoint - Endpoint path (e.g., '/route-stats' or '/club-routes')
+   * @param {URLSearchParams} params - Query parameters
+   * @returns {Promise<Response>} Fetch response
+   */
+  async function fetchFromWorker(endpoint, params = new URLSearchParams()) {
+    const paramString = params.toString();
+    const suffix = paramString ? `?${paramString}` : '';
+
+    try {
+      const response = await fetch(`${WORKER_BASE_PRIMARY}${endpoint}${suffix}`);
+      if (response.ok) return response;
+      // Primary returned error, try fallback
+      return fetch(`${WORKER_BASE_FALLBACK}${endpoint}${suffix}`);
+    } catch (e) {
+      // Primary failed (DNS not ready), try fallback
+      return fetch(`${WORKER_BASE_FALLBACK}${endpoint}${suffix}`);
+    }
+  }
+
+  /**
+   * Fetch route stats from worker and replace element
+   * @param {Element} targetElement - Element to replace with route stats
    * @param {string} routeId - RWGPS route ID
    * @param {number|null} donuts - Physical difficulty (1-5) or null
    * @param {string|null} level - Challenge level text or null
+   * @param {boolean} insertInto - If true, insert into element instead of replacing
    */
-  async function loadRouteStats(card, routeId, donuts, level) {
-    // Try primary URL first, fallback if it fails
-    async function tryFetch(baseUrl) {
-      const url = new URL(baseUrl);
-      url.searchParams.set('id', routeId);
-      // Only include optional params if they have values
-      if (donuts !== null) {
-        url.searchParams.set('stars', donuts);
-      }
-      if (level !== null) {
-        url.searchParams.set('level', level);
-      }
-      return fetch(url.toString());
+  async function loadRouteStats(targetElement, routeId, donuts, level, insertInto = false) {
+    const params = new URLSearchParams();
+    params.set('id', routeId);
+    if (donuts !== null) {
+      params.set('stars', donuts);
+    }
+    if (level !== null) {
+      params.set('level', level);
     }
 
     try {
-      let response;
-      try {
-        response = await tryFetch(WORKER_URL_PRIMARY);
-      } catch (e) {
-        // Primary failed (DNS not ready), try fallback
-        response = await tryFetch(WORKER_URL_FALLBACK);
-      }
+      const response = await fetchFromWorker('/route-stats', params);
       
       if (!response.ok) {
         console.error(`Route stats fetch failed: ${response.status}`);
@@ -199,15 +210,20 @@
 
       // Check if we need to update
       // Always update on first load or if hash changed
-      if (!storedHash || storedHash !== newHash || !card.dataset.routeStatsLoaded) {
+      if (!storedHash || storedHash !== newHash || !targetElement.dataset.routeStatsLoaded) {
         // Create a temporary container to parse the HTML
         const temp = document.createElement('div');
         temp.innerHTML = html;
         const routeStatsElement = temp.firstElementChild;
 
         if (routeStatsElement) {
-          // Replace the button card with route stats
-          card.replaceWith(routeStatsElement);
+          if (insertInto) {
+            // Insert into the placeholder element
+            targetElement.appendChild(routeStatsElement);
+          } else {
+            // Replace the element with route stats
+            targetElement.replaceWith(routeStatsElement);
+          }
           
           // Store the new hash
           if (newHash) {
@@ -228,6 +244,7 @@
 
   /**
    * Find and process all button cards with RWGPS URLs
+   * @returns {number} Number of button cards processed
    */
   function processButtonCards() {
     // Find all button cards
@@ -235,6 +252,7 @@
 
     // Get challenge level from post tags once (shared across all cards on the page)
     const level = getChallengeLevelFromTags();
+    let processedCount = 0;
 
     buttonCards.forEach(card => {
       // Skip already processed cards
@@ -253,7 +271,124 @@
 
       // Load and replace
       loadRouteStats(card, routeId, donuts, level);
+      processedCount++;
     });
+
+    return processedCount;
+  }
+
+  /**
+   * Normalize a string for fuzzy matching
+   * @param {string} str - Input string
+   * @returns {string} Normalized string
+   */
+  function normalizeForMatch(str) {
+    return str
+      .toLowerCase()
+      .trim()
+      .replace(/^the\s+/i, '')       // Remove leading "the "
+      .replace(/\s+route$/i, '')     // Remove trailing " route"
+      .replace(/\s+loop$/i, '')      // Remove trailing " loop"
+      .replace(/[^\w\s]/g, '')       // Remove special characters
+      .replace(/\s+/g, ' ');         // Normalize whitespace
+  }
+
+  /**
+   * Find a matching route from the club routes list
+   * Uses medium-strictness fuzzy matching
+   * @param {string} postTitle - The post title to match
+   * @param {Array} clubRoutes - Array of { id, name } objects
+   * @returns {object|null} Matching route or null
+   */
+  function findMatchingRoute(postTitle, clubRoutes) {
+    const normalizedTitle = normalizeForMatch(postTitle);
+    
+    for (const route of clubRoutes) {
+      const normalizedName = normalizeForMatch(route.name);
+      
+      // Exact match after normalization
+      if (normalizedTitle === normalizedName) {
+        return route;
+      }
+      
+      // One contains the other (medium strictness)
+      if (normalizedTitle.includes(normalizedName) || 
+          normalizedName.includes(normalizedTitle)) {
+        return route;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Check if we're on a route page (has the placeholder element)
+   * @returns {boolean}
+   */
+  function isRoutePage() {
+    return document.querySelector('.route-stats-placeholder') !== null;
+  }
+
+  /**
+   * Get the post title from the page
+   * @returns {string|null}
+   */
+  function getPostTitle() {
+    const titleElement = document.querySelector('.post-title');
+    return titleElement ? titleElement.textContent.trim() : null;
+  }
+
+  /**
+   * Fetch club routes from worker
+   * @returns {Promise<Array|null>} Array of { id, name } or null on error
+   */
+  async function fetchClubRoutes() {
+    try {
+      const response = await fetchFromWorker('/club-routes');
+      if (!response.ok) {
+        console.error(`Club routes fetch failed: ${response.status}`);
+        return null;
+      }
+      const data = await response.json();
+      return data.routes || null;
+    } catch (error) {
+      console.error('Failed to fetch club routes:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Process route page by matching post title to club routes
+   * Only runs on custom-route template when no button cards were processed
+   */
+  async function processRoutePageByTitle() {
+    // Only run on route pages
+    if (!isRoutePage()) return;
+
+    const placeholder = document.querySelector('.route-stats-placeholder');
+    if (!placeholder) return;
+
+    // Skip if already processed
+    if (placeholder.dataset.routeStatsProcessed) return;
+    placeholder.dataset.routeStatsProcessed = 'true';
+
+    // Get post title
+    const postTitle = getPostTitle();
+    if (!postTitle) return;
+
+    // Fetch club routes
+    const clubRoutes = await fetchClubRoutes();
+    if (!clubRoutes || clubRoutes.length === 0) return;
+
+    // Find matching route
+    const matchedRoute = findMatchingRoute(postTitle, clubRoutes);
+    if (!matchedRoute) return;
+
+    // Get challenge level from tags
+    const level = getChallengeLevelFromTags();
+
+    // Load route stats into placeholder (no donuts for title-matched routes)
+    loadRouteStats(placeholder, matchedRoute.id, null, level, true);
   }
 
   /**
@@ -414,6 +549,22 @@
   }
 
   /**
+   * Main processing function
+   * 1. Process button cards first (explicit RWGPS links)
+   * 2. If no button cards found and on route page, try title matching
+   */
+  async function processRoutePage() {
+    // First, try processing button cards
+    const buttonCardsProcessed = processButtonCards();
+
+    // If no button cards were processed and we're on a route page,
+    // try matching the post title to club routes
+    if (buttonCardsProcessed === 0) {
+      await processRoutePageByTitle();
+    }
+  }
+
+  /**
    * Initialize when DOM is ready
    */
   function init() {
@@ -421,9 +572,9 @@
     mapObserver = createMapObserver();
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', processButtonCards);
+      document.addEventListener('DOMContentLoaded', processRoutePage);
     } else {
-      processButtonCards();
+      processRoutePage();
     }
 
     // Also observe for dynamically added content (e.g., infinite scroll)

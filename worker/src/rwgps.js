@@ -135,3 +135,65 @@ export function extractRouteId(url) {
   const match = url.match(/ridewithgps\.com\/routes\/(\d+)/);
   return match ? match[1] : null;
 }
+
+/**
+ * Fetch all routes from a club's library
+ * @param {object} env - Worker environment with secrets and club ID
+ * @returns {Promise<Array>} Array of { id, name } objects
+ */
+export async function fetchClubRoutes(env) {
+  const apiKey = env.RWGPS_API_KEY;
+  const authToken = env.RWGPS_AUTH_TOKEN;
+  const clubId = env.RWGPS_CLUB_ID;
+
+  if (!clubId) {
+    throw new Error('RWGPS_CLUB_ID not configured');
+  }
+
+  const allRoutes = [];
+  let page = 1;
+  const pageSize = 200; // Max allowed by RWGPS API
+
+  while (true) {
+    const url = `${RWGPS_API_BASE}/clubs/${clubId}/routes.json?page=${page}&page_size=${pageSize}`;
+
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-rwgps-api-key': apiKey,
+        'x-rwgps-auth-token': authToken,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error(`Club ${clubId} not found`);
+      }
+      if (response.status === 401) {
+        throw new Error('RWGPS authentication failed');
+      }
+      throw new Error(`RWGPS API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const routes = data.routes || [];
+
+    // Extract only id and name for each route
+    for (const route of routes) {
+      allRoutes.push({
+        id: route.id,
+        name: route.name,
+      });
+    }
+
+    // Check if there are more pages
+    const pagination = data.meta?.pagination;
+    if (!pagination || !pagination.next_page_url || routes.length < pageSize) {
+      break;
+    }
+
+    page++;
+  }
+
+  return allRoutes;
+}

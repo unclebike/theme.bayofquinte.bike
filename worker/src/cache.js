@@ -126,3 +126,32 @@ export function updateCachedHtml(cached, stars, level, html) {
     renderedHtml,
   };
 }
+
+// Club routes cache TTL: 1 hour
+const CLUB_ROUTES_TTL_SECONDS = 3600;
+
+/**
+ * Get cached club routes list from KV
+ * @param {object} kv - KV namespace binding
+ * @param {string} clubId - Club ID
+ * @returns {Promise<Array|null>} Cached routes array or null
+ */
+export async function getCachedClubRoutes(kv, clubId) {
+  const key = `club-routes:${clubId}`;
+  const cached = await kv.get(key, { type: 'json' });
+  return cached;
+}
+
+/**
+ * Store club routes list in KV cache
+ * @param {object} kv - KV namespace binding
+ * @param {string} clubId - Club ID
+ * @param {Array} routes - Array of { id, name } objects
+ * @returns {Promise<void>}
+ */
+export async function setCachedClubRoutes(kv, clubId, routes) {
+  const key = `club-routes:${clubId}`;
+  await kv.put(key, JSON.stringify(routes), {
+    expirationTtl: CLUB_ROUTES_TTL_SECONDS,
+  });
+}
