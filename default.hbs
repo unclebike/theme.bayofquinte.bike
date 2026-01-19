@@ -9,11 +9,7 @@
 		{{>services/google_fonts}}
 		<link rel="stylesheet" type="text/css" href="{{asset "css/screen.css"}}">
 		<link rel="stylesheet" type="text/css" href="{{asset "css/custom.css"}}">
-		<!-- Mapbox preconnect hints for faster map loading -->
-		<link rel="preconnect" href="https://api.mapbox.com">
-		<link rel="preconnect" href="https://tiles.mapbox.com">
-		<link rel="preconnect" href="https://events.mapbox.com">
-		<link href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" rel="stylesheet">
+		{{{block "custom_head"}}}
 		{{ghost_head}}
 	</head>
 	<body class="{{body_class}}{{#if @custom.navigation_on_the_right_side}} global-nav-right{{/if}}{{#if @custom.standard_load_more_button}} global-load-more{{/if}}">
@@ -39,9 +35,8 @@
 		{{/if}}
 		{{#is "post, page"}}
 		<script src="{{asset "js/post.js"}}"></script>
-		<script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
-		<script src="{{asset "js/route-stats.js"}}"></script>
 		{{/is}}
+		{{{block "custom_scripts"}}}
 		{{{block "notifications_js"}}}
 		{{{block "search_js"}}}
 		{{{block "membership_js"}}}

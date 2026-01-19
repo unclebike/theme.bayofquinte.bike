@@ -5,15 +5,13 @@
  * with route stats cards fetched from the Cloudflare Worker.
  * 
  * Uses localStorage for hash-based change detection and silent updates.
- * Implements lazy loading with static map fallback for performance.
+ * Implements lazy loading with IntersectionObserver for performance.
  */
 
 (function() {
   'use strict';
 
   // Configuration
-  // Primary: custom domain (once DNS propagates)
-  // Fallback: workers.dev URL
   const WORKER_URL_PRIMARY = 'https://api.bayofquinte.bike/route-stats';
   const WORKER_URL_FALLBACK = 'https://rwgps-route-stats.adam-7e5.workers.dev/route-stats';
   const STORAGE_PREFIX = 'route-stats-hash:';
@@ -21,9 +19,7 @@
   // Mapbox configuration
   const MAPBOX_TOKEN = 'pk.eyJ1IjoidGlsbGV5IiwiYSI6IlFhX1ZUYm8ifQ.Dr4lrivYwl5ZTnuAdMqzVg';
   const MAPBOX_STYLE = 'mapbox://styles/tilley/cl0sia1dj000u14nmil6oqaox?v=2';
-  const MAPBOX_STYLE_ID = 'tilley/cl0sia1dj000u14nmil6oqaox'; // For static API
   const ROUTE_LINE_COLOR = 'hsl(8, 75%, 60%)';
-  const ROUTE_LINE_COLOR_HEX = 'e05a4a'; // For static API (no # prefix)
   const ROUTE_LINE_WIDTH = 4;
 
   // IntersectionObserver for lazy loading
@@ -82,80 +78,6 @@
     } catch (e) {
       // localStorage not available, ignore
     }
-  }
-
-  /**
-   * Generate a Mapbox Static API URL for the route
-   * @param {Array} coordinates - Array of [lng, lat] coordinates
-   * @param {Array} bounds - [[minLng, minLat], [maxLng, maxLat]]
-   * @param {number} width - Image width
-   * @param {number} height - Image height
-   * @returns {string} Static map URL
-   */
-  function getStaticMapUrl(coordinates, bounds, width, height) {
-    // Simplify coordinates for URL (max ~50 points for URL length)
-    const maxPoints = 50;
-    let simplified = coordinates;
-    if (coordinates.length > maxPoints) {
-      const step = (coordinates.length - 1) / (maxPoints - 1);
-      simplified = [];
-      for (let i = 0; i < maxPoints; i++) {
-        const idx = Math.round(i * step);
-        simplified.push(coordinates[idx]);
-      }
-    }
-
-    // Build GeoJSON path overlay
-    const pathCoords = simplified.map(c => c.join(',')).join(',');
-    const path = `path-${ROUTE_LINE_WIDTH}+${ROUTE_LINE_COLOR_HEX}(${encodeURIComponent(pathCoords)})`;
-
-    // Calculate center and zoom from bounds
-    const centerLng = (bounds[0][0] + bounds[1][0]) / 2;
-    const centerLat = (bounds[0][1] + bounds[1][1]) / 2;
-    
-    // Estimate zoom level from bounds
-    const lngDiff = bounds[1][0] - bounds[0][0];
-    const latDiff = bounds[1][1] - bounds[0][1];
-    const maxDiff = Math.max(lngDiff, latDiff);
-    let zoom = Math.floor(14 - Math.log2(maxDiff * 100));
-    zoom = Math.max(5, Math.min(15, zoom)); // Clamp between 5-15
-
-    // Use auto bounds fitting
-    const url = `https://api.mapbox.com/styles/v1/${MAPBOX_STYLE_ID}/static/${path}/auto/${width}x${height}@2x?access_token=${MAPBOX_TOKEN}&padding=30`;
-    
-    return url;
-  }
-
-  /**
-   * Create static map placeholder image
-   * @param {Element} container - The .route-map element
-   * @param {Array} coordinates - Route coordinates
-   * @param {Array} bounds - Route bounds
-   */
-  function createStaticMapPlaceholder(container, coordinates, bounds) {
-    // Get container dimensions (or estimate)
-    const width = Math.min(container.offsetWidth || 400, 600);
-    const height = Math.min(container.offsetHeight || 280, 400);
-
-    const staticUrl = getStaticMapUrl(coordinates, bounds, width, height);
-    
-    // Create image element
-    const img = document.createElement('img');
-    img.src = staticUrl;
-    img.alt = 'Route map';
-    img.className = 'route-map-static';
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;';
-    
-    // Add loading indicator
-    const loader = document.createElement('div');
-    loader.className = 'route-map-loader';
-    loader.innerHTML = '<span>Loading map...</span>';
-    
-    container.appendChild(img);
-    container.style.position = 'relative';
-    
-    // Mark as having static placeholder
-    container.dataset.hasStaticMap = 'true';
   }
 
   /**
@@ -256,23 +178,6 @@
    */
   function setupLazyMap(container) {
     if (container.dataset.mapInitialized || container.dataset.mapObserved) return;
-    
-    // Parse data for static map
-    const geojsonStr = container.getAttribute('data-geojson');
-    const boundsStr = container.getAttribute('data-bounds');
-    
-    if (geojsonStr && boundsStr) {
-      try {
-        const geojson = JSON.parse(geojsonStr.replace(/&quot;/g, '"'));
-        const bounds = JSON.parse(boundsStr.replace(/&quot;/g, '"'));
-        const coordinates = geojson.geometry.coordinates;
-        
-        // Create static map placeholder immediately
-        createStaticMapPlaceholder(container, coordinates, bounds);
-      } catch (e) {
-        console.error('Failed to create static map:', e);
-      }
-    }
 
     // Observe for lazy loading interactive map
     if (mapObserver) {
@@ -334,7 +239,7 @@
     // Add navigation controls (zoom buttons)
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
 
-    // Enable scroll zoom only when map is focused (double-click or ctrl+scroll)
+    // Enable scroll zoom only when map is focused (click to enable)
     map.on('click', () => {
       map.scrollZoom.enable();
     });
@@ -346,12 +251,6 @@
 
     // Add route line when map loads
     map.on('load', () => {
-      // Remove static placeholder if present
-      const staticImg = container.querySelector('.route-map-static');
-      if (staticImg) {
-        staticImg.remove();
-      }
-
       map.addSource('route', {
         type: 'geojson',
         data: geojson,
