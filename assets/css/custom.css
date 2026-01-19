@@ -775,10 +775,11 @@ ______________________________________________________________*/
    flex-direction: column;
    gap: 8px;
    border: 2px solid var(--color-five);
-   padding: 15px 20px;
+   padding: clamp(10px, 2vw, 15px) clamp(12px, 2.5vw, 20px);
    color: var(--color-white);
    border-radius: 4px;
    background-color: var(--color-one);
+   box-sizing: border-box;
 }
 .route-stats .list-item .list-label {
    font-size: 11px;
@@ -897,10 +898,6 @@ ______________________________________________________________*/
    /* Stats grid stays 2 columns on mobile */
    .route-stats-grid {
       grid-template-columns: repeat(2, 1fr);
-   }
-   /* Reduce padding on stat items */
-   .route-stats .list-item {
-      padding: 12px 14px;
    }
    /* Stack difficulty stats full width with bigger icons */
    .route-stats .list-item:has(.icon-container) {
