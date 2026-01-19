@@ -137,25 +137,23 @@ export function extractRouteId(url) {
 }
 
 /**
- * Fetch all routes from a club's library
- * @param {object} env - Worker environment with secrets and club ID
+ * Fetch all routes from the authenticated account's library
+ * When authenticated as an organization, this returns the organization's routes
+ * @param {object} env - Worker environment with secrets
  * @returns {Promise<Array>} Array of { id, name } objects
  */
 export async function fetchClubRoutes(env) {
   const apiKey = env.RWGPS_API_KEY;
   const authToken = env.RWGPS_AUTH_TOKEN;
-  const clubId = env.RWGPS_CLUB_ID;
-
-  if (!clubId) {
-    throw new Error('RWGPS_CLUB_ID not configured');
-  }
 
   const allRoutes = [];
   let page = 1;
   const pageSize = 200; // Max allowed by RWGPS API
 
   while (true) {
-    const url = `${RWGPS_API_BASE}/clubs/${clubId}/routes.json?page=${page}&page_size=${pageSize}`;
+    // Use the authenticated user's routes endpoint
+    // When logged in as an organization, this returns the org's routes
+    const url = `${RWGPS_API_BASE}/routes.json?page=${page}&page_size=${pageSize}`;
 
     const response = await fetch(url, {
       headers: {
@@ -166,9 +164,6 @@ export async function fetchClubRoutes(env) {
     });
 
     if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`Club ${clubId} not found`);
-      }
       if (response.status === 401) {
         throw new Error('RWGPS authentication failed');
       }

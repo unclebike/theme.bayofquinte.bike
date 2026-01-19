@@ -2,17 +2,16 @@ name = "rwgps-route-stats"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
-# Environment variables (non-secret)
-[vars]
-RWGPS_CLUB_ID = "6600"
-
 # KV Namespace for caching route data
 kv_namespaces = [
   { binding = "ROUTE_CACHE", id = "141f003c19d449459f547230062f0f89" }
 ]
 
-# Environment variables
-# IMPORTANT: Secrets should be set via CLI, not in this file:
+# Environment variables (non-secret)
+[vars]
+RWGPS_CLUB_ID = "6600"
+
+# Secrets should be set via CLI, not in this file:
 #   wrangler secret put RWGPS_API_KEY
 #   wrangler secret put RWGPS_AUTH_TOKEN
 #

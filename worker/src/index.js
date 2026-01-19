@@ -118,21 +118,19 @@ async function handleClubRoutes(request, env, ctx) {
     return errorResponse('Method not allowed', 405);
   }
 
-  const clubId = env.RWGPS_CLUB_ID;
-  if (!clubId) {
-    return errorResponse('Club ID not configured', 500);
-  }
+  // Use a static cache key since we're using the authenticated account's routes
+  const cacheKey = 'org-routes';
 
   try {
     // Check cache first
-    let routes = await getCachedClubRoutes(env.ROUTE_CACHE, clubId);
+    let routes = await getCachedClubRoutes(env.ROUTE_CACHE, cacheKey);
 
     if (!routes) {
       // Cache miss: fetch from RWGPS
       routes = await fetchClubRoutes(env);
       
       // Store in cache (don't wait)
-      ctx.waitUntil(setCachedClubRoutes(env.ROUTE_CACHE, clubId, routes));
+      ctx.waitUntil(setCachedClubRoutes(env.ROUTE_CACHE, cacheKey, routes));
     }
 
     return new Response(JSON.stringify({ routes }), {
