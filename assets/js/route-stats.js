@@ -1,8 +1,12 @@
 /**
  * Route Stats Client-Side Script
  * 
- * Finds Ghost product cards with RideWithGPS URLs and replaces them
+ * Finds Ghost button cards with RideWithGPS URLs and replaces them
  * with route stats cards fetched from the Cloudflare Worker.
+ * 
+ * - Donut count (physical difficulty) is extracted from 🍩 emojis in button text
+ * - Challenge level is extracted from post tags (Rambler, Explorer, Adventurer, Epic)
+ * - Technical difficulty (peppers) is auto-calculated by the worker
  * 
  * Uses localStorage for hash-based change detection and silent updates.
  * Implements lazy loading - Mapbox JS is only loaded when map scrolls into view.
@@ -86,22 +90,45 @@
   }
 
   /**
-   * Count active stars in product card rating
-   * @param {Element} card - Product card element
-   * @returns {number} Number of active stars (1-5)
+   * Count donut emojis in button text for physical difficulty
+   * @param {Element} button - Button/link element
+   * @returns {number|null} Number of donut emojis (1-5) or null if none found
    */
-  function countStars(card) {
-    const activeStars = card.querySelectorAll('.kg-product-card-rating-active');
-    return activeStars.length || 3; // Default to 3 if no rating found
+  function countDonuts(button) {
+    const text = button.textContent || '';
+    const donutMatches = text.match(/🍩/g);
+    if (!donutMatches || donutMatches.length === 0) {
+      return null;
+    }
+    // Clamp to 1-5 range
+    return Math.min(Math.max(donutMatches.length, 1), 5);
   }
 
   /**
-   * Get challenge level text from button
-   * @param {Element} button - Button/link element
-   * @returns {string} Challenge level text
+   * Get challenge level from post tags
+   * Looks for Rambler, Explorer, Adventurer, or Epic tags
+   * @returns {string|null} Challenge level or null if not found
    */
-  function getChallengeLevel(button) {
-    return button.textContent.trim() || 'Explorer';
+  function getChallengeLevelFromTags() {
+    const validLevels = ['Rambler', 'Explorer', 'Adventurer', 'Epic'];
+    
+    // Look for tags in the post-tags container
+    const tagContainer = document.querySelector('.post-tags');
+    if (!tagContainer) return null;
+    
+    const tagLinks = tagContainer.querySelectorAll('a');
+    for (const link of tagLinks) {
+      const tagText = link.textContent.trim();
+      // Check if the tag matches any valid level (case-insensitive)
+      const matchedLevel = validLevels.find(
+        level => level.toLowerCase() === tagText.toLowerCase()
+      );
+      if (matchedLevel) {
+        return matchedLevel;
+      }
+    }
+    
+    return null;
   }
 
   /**
@@ -131,19 +158,24 @@
   }
 
   /**
-   * Fetch route stats from worker and replace product card
-   * @param {Element} card - Product card element to replace
+   * Fetch route stats from worker and replace button card
+   * @param {Element} card - Button card element to replace
    * @param {string} routeId - RWGPS route ID
-   * @param {number} stars - Physical difficulty stars
-   * @param {string} level - Challenge level text
+   * @param {number|null} donuts - Physical difficulty (1-5) or null
+   * @param {string|null} level - Challenge level text or null
    */
-  async function loadRouteStats(card, routeId, stars, level) {
+  async function loadRouteStats(card, routeId, donuts, level) {
     // Try primary URL first, fallback if it fails
     async function tryFetch(baseUrl) {
       const url = new URL(baseUrl);
       url.searchParams.set('id', routeId);
-      url.searchParams.set('stars', stars);
-      url.searchParams.set('level', level);
+      // Only include optional params if they have values
+      if (donuts !== null) {
+        url.searchParams.set('stars', donuts);
+      }
+      if (level !== null) {
+        url.searchParams.set('level', level);
+      }
       return fetch(url.toString());
     }
 
@@ -174,7 +206,7 @@
         const routeStatsElement = temp.firstElementChild;
 
         if (routeStatsElement) {
-          // Replace the product card with route stats
+          // Replace the button card with route stats
           card.replaceWith(routeStatsElement);
           
           // Store the new hash
@@ -195,13 +227,16 @@
   }
 
   /**
-   * Find and process all product cards with RWGPS URLs
+   * Find and process all button cards with RWGPS URLs
    */
-  function processProductCards() {
-    // Find all product cards
-    const productCards = document.querySelectorAll('.kg-product-card');
+  function processButtonCards() {
+    // Find all button cards
+    const buttonCards = document.querySelectorAll('.kg-button-card');
 
-    productCards.forEach(card => {
+    // Get challenge level from post tags once (shared across all cards on the page)
+    const level = getChallengeLevelFromTags();
+
+    buttonCards.forEach(card => {
       // Skip already processed cards
       if (card.dataset.routeStatsProcessed) return;
       card.dataset.routeStatsProcessed = 'true';
@@ -213,12 +248,11 @@
       const routeId = extractRouteId(button.href);
       if (!routeId) return;
 
-      // Extract data from product card
-      const stars = countStars(card);
-      const level = getChallengeLevel(button);
+      // Extract donut count from button text
+      const donuts = countDonuts(button);
 
       // Load and replace
-      loadRouteStats(card, routeId, stars, level);
+      loadRouteStats(card, routeId, donuts, level);
     });
   }
 
@@ -387,9 +421,9 @@
     mapObserver = createMapObserver();
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', processProductCards);
+      document.addEventListener('DOMContentLoaded', processButtonCards);
     } else {
-      processProductCards();
+      processButtonCards();
     }
 
     // Also observe for dynamically added content (e.g., infinite scroll)
@@ -415,7 +449,7 @@
       });
       
       if (shouldProcess) {
-        processProductCards();
+        processButtonCards();
       }
       if (shouldInitMaps) {
         // Small delay to ensure DOM is ready

@@ -124,19 +124,18 @@ async function handleRequest(request, env, ctx) {
 
   // Parse query parameters
   const routeId = url.searchParams.get('id');
-  const stars = parseInt(url.searchParams.get('stars'), 10);
-  const level = url.searchParams.get('level');
+  const starsParam = url.searchParams.get('stars');
+  const stars = starsParam ? parseInt(starsParam, 10) : null;
+  const level = url.searchParams.get('level') || null;
   const purge = url.searchParams.get('purge') === 'true';
 
   // Validate required parameters
   if (!routeId) {
     return errorResponse('Missing required parameter: id');
   }
-  if (!stars || stars < 1 || stars > 5) {
+  // Validate stars if provided (must be 1-5)
+  if (stars !== null && (stars < 1 || stars > 5)) {
     return errorResponse('Invalid parameter: stars (must be 1-5)');
-  }
-  if (!level) {
-    return errorResponse('Missing required parameter: level');
   }
 
   try {

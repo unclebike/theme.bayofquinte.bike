@@ -121,23 +121,40 @@ export function renderRouteStatsCard({ routeData, physicalDifficulty, challengeL
   const mapHtml = renderMapContainer(routeData);
   
   // Build the stats items - challenge level spans full width, others in 2-col grid
-  const statsItems = [
-    renderStatItem('Challenge Level', challengeLevel, false, 'challenge-level'),
+  const statsItems = [];
+  
+  // Only include challenge level if provided
+  if (challengeLevel) {
+    statsItems.push(renderStatItem('Challenge Level', challengeLevel, false, 'challenge-level'));
+  }
+  
+  // Always include core stats
+  statsItems.push(
     renderStatItem('Elevation Gain', formatElevation(routeData.elevationGain)),
     renderStatItem('Distance', formatDistance(routeData.distanceKm)),
     renderStatItem('Paved', formatPercentage(routeData.pavedPct)),
     renderStatItem('Unpaved', formatPercentage(routeData.unpavedPct)),
-    renderStatItem(
-      'Physical Difficulty',
-      renderIcons(physicalDifficulty, 'donut', 'white-donut'),
-      true
-    ),
+  );
+  
+  // Only include physical difficulty if provided
+  if (physicalDifficulty) {
+    statsItems.push(
+      renderStatItem(
+        'Physical Difficulty',
+        renderIcons(physicalDifficulty, 'donut', 'white-donut'),
+        true
+      )
+    );
+  }
+  
+  // Always include technical difficulty (auto-calculated)
+  statsItems.push(
     renderStatItem(
       'Technical Difficulty',
       renderIcons(techDifficulty.score, 'pepper', 'white-pepper'),
       true
-    ),
-  ];
+    )
+  );
 
   // Wrap in the route-stats container: map on left, stats grid on right
   return `<div class="route-stats">${mapHtml}<div class="route-stats-grid">${statsItems.join('')}</div></div>`;
