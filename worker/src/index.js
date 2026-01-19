@@ -87,6 +87,7 @@ async function revalidateCache(routeId, stars, level, env, cached) {
       const updatedCache = updateCachedHtml(
         { ...cached, routeData: freshRouteData, dataHash: generateDataHash(freshRouteData) },
         stars,
+        level,
         html
       );
       
@@ -149,8 +150,8 @@ async function handleRequest(request, env, ctx) {
     const cached = purge ? null : await getCachedRoute(env.ROUTE_CACHE, routeId);
     
     if (cached) {
-      // Check if we have pre-rendered HTML for this star rating
-      const cachedHtml = getCachedHtml(cached, stars);
+      // Check if we have pre-rendered HTML for this stars/level combination
+      const cachedHtml = getCachedHtml(cached, stars, level);
       
       if (cachedHtml) {
         // Return cached HTML immediately
@@ -164,7 +165,7 @@ async function handleRequest(request, env, ctx) {
         return response;
       }
       
-      // Have cached route data but not HTML for this star rating
+      // Have cached route data but not HTML for this stars/level combination
       // Render HTML and update cache
       const html = renderRouteStatsCard({
         routeData: cached.routeData,
@@ -173,7 +174,7 @@ async function handleRequest(request, env, ctx) {
       });
       
       // Update cache with new HTML variation
-      const updatedCache = updateCachedHtml(cached, stars, html);
+      const updatedCache = updateCachedHtml(cached, stars, level, html);
       ctx.waitUntil(
         setCachedRoute(env.ROUTE_CACHE, routeId, cached.routeData, updatedCache.renderedHtml)
       );
@@ -200,8 +201,12 @@ async function handleRequest(request, env, ctx) {
     const dataHash = generateDataHash(routeData);
     
     // Store in cache (don't wait for it)
+    // Use same cache key format as updateCachedHtml
+    const starsPart = stars !== null ? stars : 'none';
+    const levelPart = level || 'none';
+    const cacheKey = `stars_${starsPart}_level_${levelPart}`;
     ctx.waitUntil(
-      setCachedRoute(env.ROUTE_CACHE, routeId, routeData, { [`stars_${stars}`]: html })
+      setCachedRoute(env.ROUTE_CACHE, routeId, routeData, { [cacheKey]: html })
     );
 
     return htmlResponse(html, dataHash);

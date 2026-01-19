@@ -85,26 +85,42 @@ export function hasDataChanged(cached, freshRouteData) {
 }
 
 /**
- * Get rendered HTML for a specific star rating from cache
- * @param {object} cached - Cached data object
- * @param {number} stars - Physical difficulty stars (1-5)
- * @returns {string|null} Rendered HTML or null if not cached
+ * Generate a cache key for rendered HTML based on stars and level
+ * @param {number|null} stars - Physical difficulty stars (1-5) or null
+ * @param {string|null} level - Challenge level or null
+ * @returns {string} Cache key
  */
-export function getCachedHtml(cached, stars) {
-  if (!cached || !cached.renderedHtml) return null;
-  return cached.renderedHtml[`stars_${stars}`] || null;
+function getHtmlCacheKey(stars, level) {
+  const starsPart = stars !== null ? stars : 'none';
+  const levelPart = level || 'none';
+  return `stars_${starsPart}_level_${levelPart}`;
 }
 
 /**
- * Update cache with new rendered HTML for a star rating
+ * Get rendered HTML for a specific stars/level combination from cache
+ * @param {object} cached - Cached data object
+ * @param {number|null} stars - Physical difficulty stars (1-5) or null
+ * @param {string|null} level - Challenge level or null
+ * @returns {string|null} Rendered HTML or null if not cached
+ */
+export function getCachedHtml(cached, stars, level) {
+  if (!cached || !cached.renderedHtml) return null;
+  const key = getHtmlCacheKey(stars, level);
+  return cached.renderedHtml[key] || null;
+}
+
+/**
+ * Update cache with new rendered HTML for a stars/level combination
  * @param {object} cached - Existing cached data
- * @param {number} stars - Physical difficulty stars (1-5)
+ * @param {number|null} stars - Physical difficulty stars (1-5) or null
+ * @param {string|null} level - Challenge level or null
  * @param {string} html - Rendered HTML
  * @returns {object} Updated cache data
  */
-export function updateCachedHtml(cached, stars, html) {
+export function updateCachedHtml(cached, stars, level, html) {
   const renderedHtml = cached.renderedHtml || {};
-  renderedHtml[`stars_${stars}`] = html;
+  const key = getHtmlCacheKey(stars, level);
+  renderedHtml[key] = html;
   return {
     ...cached,
     renderedHtml,
