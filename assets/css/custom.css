@@ -888,7 +888,7 @@ ______________________________________________________________*/
 @media (max-width: 767px) {
    .route-stats {
       grid-template-columns: 1fr;
-      margin: 0 20px 40px 20px;
+      margin: 0 clamp(10px, 3vw, 20px) 40px;
    }
    .route-stats .route-map {
       height: 180px;
@@ -897,6 +897,18 @@ ______________________________________________________________*/
    /* Stats grid stays 2 columns on mobile */
    .route-stats-grid {
       grid-template-columns: repeat(2, 1fr);
+   }
+   /* Reduce padding on stat items */
+   .route-stats .list-item {
+      padding: 12px 14px;
+   }
+   /* Stack difficulty stats full width with bigger icons */
+   .route-stats .list-item:has(.icon-container) {
+      grid-column: 1 / -1;
+   }
+   .route-stats .list-item .icon-container span {
+      width: 32px;
+      height: 32px;
    }
 }
 
