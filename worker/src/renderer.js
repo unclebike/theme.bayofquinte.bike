@@ -54,6 +54,36 @@ function formatPercentage(pct) {
 }
 
 /**
+ * Calculate physical difficulty (donuts) from route data
+ * Based on meters of elevation gain per kilometer traveled
+ * 
+ * Scale:
+ *   < 5 m/km   = 1 donut (flat/easy)
+ *   5 - 10     = 2 donuts (rolling)
+ *   10 - 15    = 3 donuts (hilly)
+ *   15 - 20    = 4 donuts (very hilly)
+ *   >= 20      = 5 donuts (mountainous)
+ * 
+ * @param {object} routeData - Route data with elevationGain and distanceKm
+ * @returns {number} Physical difficulty score (1-5)
+ */
+function calculatePhysicalDifficulty(routeData) {
+  const { elevationGain, distanceKm } = routeData;
+  
+  if (!distanceKm || distanceKm === 0) {
+    return 1; // Default to easiest if no distance
+  }
+  
+  const gainPerKm = elevationGain / distanceKm;
+  
+  if (gainPerKm < 5) return 1;
+  if (gainPerKm < 10) return 2;
+  if (gainPerKm < 15) return 3;
+  if (gainPerKm < 20) return 4;
+  return 5;
+}
+
+/**
  * Render a single stat item
  * @param {string} label - Item label
  * @param {string} value - Item value (can be HTML)
@@ -109,13 +139,16 @@ function renderMapContainer(routeData) {
  * Render the complete route stats card HTML
  * @param {object} options - Rendering options
  * @param {object} options.routeData - Normalized RWGPS route data
- * @param {number} options.physicalDifficulty - Physical difficulty (1-5) from Ghost stars
+ * @param {number} options.physicalDifficulty - Physical difficulty (1-5) override, or null to auto-calculate
  * @param {string} options.challengeLevel - Challenge level text from Ghost
  * @returns {string} Complete HTML for route stats card
  */
 export function renderRouteStatsCard({ routeData, physicalDifficulty, challengeLevel }) {
   // Calculate technical difficulty from route data
   const techDifficulty = calculateTechnicalDifficulty(routeData);
+  
+  // Auto-calculate physical difficulty if not provided
+  const physicalScore = physicalDifficulty || calculatePhysicalDifficulty(routeData);
 
   // Build the map container
   const mapHtml = renderMapContainer(routeData);
@@ -136,16 +169,14 @@ export function renderRouteStatsCard({ routeData, physicalDifficulty, challengeL
     renderStatItem('Unpaved', formatPercentage(routeData.unpavedPct)),
   );
   
-  // Only include physical difficulty if provided
-  if (physicalDifficulty) {
-    statsItems.push(
-      renderStatItem(
-        'Physical Difficulty',
-        renderIcons(physicalDifficulty, 'donut', 'white-donut'),
-        true
-      )
-    );
-  }
+  // Always include physical difficulty (auto-calculated or from override)
+  statsItems.push(
+    renderStatItem(
+      'Physical Difficulty',
+      renderIcons(physicalScore, 'donut', 'white-donut'),
+      true
+    )
+  );
   
   // Always include technical difficulty (auto-calculated)
   statsItems.push(
