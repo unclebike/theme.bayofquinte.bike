@@ -5,7 +5,7 @@
  * with route stats cards fetched from the Cloudflare Worker.
  * 
  * Uses localStorage for hash-based change detection and silent updates.
- * Implements lazy loading with IntersectionObserver for performance.
+ * Implements lazy loading - Mapbox JS is only loaded when map scrolls into view.
  */
 
 (function() {
@@ -17,13 +17,63 @@
   const STORAGE_PREFIX = 'route-stats-hash:';
   
   // Mapbox configuration
+  const MAPBOX_JS_URL = 'https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js';
   const MAPBOX_TOKEN = 'pk.eyJ1IjoidGlsbGV5IiwiYSI6IlFhX1ZUYm8ifQ.Dr4lrivYwl5ZTnuAdMqzVg';
   const MAPBOX_STYLE = 'mapbox://styles/tilley/cl0sia1dj000u14nmil6oqaox?v=2';
   const ROUTE_LINE_COLOR = 'hsl(8, 75%, 60%)';
   const ROUTE_LINE_WIDTH = 4;
 
-  // IntersectionObserver for lazy loading
+  // State
   let mapObserver = null;
+  let mapboxLoading = false;
+  let mapboxLoaded = false;
+  let pendingMapContainers = [];
+
+  /**
+   * Dynamically load Mapbox GL JS
+   * @returns {Promise} Resolves when Mapbox is loaded
+   */
+  function loadMapboxJS() {
+    // Already loaded
+    if (mapboxLoaded || typeof mapboxgl !== 'undefined') {
+      mapboxLoaded = true;
+      return Promise.resolve();
+    }
+
+    // Already loading, return existing promise
+    if (mapboxLoading) {
+      return new Promise((resolve) => {
+        const check = setInterval(() => {
+          if (mapboxLoaded) {
+            clearInterval(check);
+            resolve();
+          }
+        }, 50);
+      });
+    }
+
+    // Start loading
+    mapboxLoading = true;
+
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = MAPBOX_JS_URL;
+      script.async = true;
+      
+      script.onload = () => {
+        mapboxLoaded = true;
+        mapboxLoading = false;
+        resolve();
+      };
+      
+      script.onerror = () => {
+        mapboxLoading = false;
+        reject(new Error('Failed to load Mapbox GL JS'));
+      };
+      
+      document.head.appendChild(script);
+    });
+  }
 
   /**
    * Extract route ID from RWGPS URL
@@ -184,8 +234,21 @@
       container.dataset.mapObserved = 'true';
       mapObserver.observe(container);
     } else {
-      // Fallback: initialize immediately if no IntersectionObserver
+      // Fallback: load and initialize immediately if no IntersectionObserver
+      loadMapboxAndInitialize(container);
+    }
+  }
+
+  /**
+   * Load Mapbox JS (if needed) and initialize the map
+   * @param {Element} container - The .route-map element
+   */
+  async function loadMapboxAndInitialize(container) {
+    try {
+      await loadMapboxJS();
       initializeInteractiveMap(container);
+    } catch (error) {
+      console.error('Failed to load Mapbox:', error);
     }
   }
 
@@ -298,12 +361,12 @@
           const container = entry.target;
           // Stop observing this element
           mapObserver.unobserve(container);
-          // Initialize interactive map
-          initializeInteractiveMap(container);
+          // Load Mapbox (if needed) and initialize map
+          loadMapboxAndInitialize(container);
         }
       });
     }, {
-      rootMargin: '100px', // Start loading 100px before visible
+      rootMargin: '200px', // Start loading 200px before visible
       threshold: 0
     });
   }
